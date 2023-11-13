@@ -3,8 +3,10 @@ use clap::{arg, Parser};
 use std::fs::File;
 use std::io::Read;
 use std::path::{Display, Path};
+use std::str::Lines;
 use log::{ debug, error, info, warn};
 
+// Argument struct
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about=None)]
 struct Args {
@@ -20,6 +22,59 @@ struct Args {
     compile: bool,
 }
 
+#[derive(Debug)]
+enum ComparisonType {
+    LEQ,
+    GEQ,
+    LE,
+    GE,
+    EQ,
+    NEQ,
+    AND,
+    OR,
+}
+#[derive(Debug)]
+enum Token {
+    // Language punctuation
+    LeftBrace,
+    RightBrace,
+    LeftBracket,
+    RightBracket,
+    LeftParen,
+    RightParen,
+    Semicolon,
+    Colon,
+    Period,
+    RightArrow,
+    Comment,
+
+    // Language keywords
+    IfToken,
+    ElseToken,
+    WhileToken,
+    InToken,
+    FnToken,
+    ReturnToken,
+    LetToken,
+
+    // Operators
+    Comparator(ComparisonType),
+    Equal,
+    Asterisk,
+    Ampersand,
+    Dash,
+    Slash,
+    QuestionMark,
+    Plus,
+    Pipe,
+
+    ID(String),
+    Literal(String),
+
+    EOL,
+}
+
+
 fn main() {
     let args = Args::parse();
 
@@ -27,6 +82,7 @@ fn main() {
     if args.compile == true {
         unimplemented!("[ERROR] Compile mode not implemented");
     }
+
     // Enable verbose mode by setting logging level to debug
     if args.verbose == true {
         env::set_var("RUST_LOG", "debug");
@@ -38,7 +94,18 @@ fn main() {
     // Read file.
     let file_txt: String = read_file(&args.filename);
 
-    println!("{}", file_txt);
+    // Tokenise elements
+    let tokens: Vec<Token> = tokenise(file_txt);
+    println!("{:?}", tokens);
+}
+
+fn tokenise(txt: String) -> Vec<Token> {
+    let lines_txt: Lines = txt.lines();
+    let mut token_builder: Vec<Token> = Vec::new();
+    for line in lines_txt {
+        token_builder.push(Token::EOL);
+    }
+    return token_builder;
 }
 
 
