@@ -3,8 +3,8 @@ use clap::{arg, Parser};
 use std::fs::File;
 use std::io::Read;
 use std::path::{Display, Path};
-use std::str::Lines;
-use log::{ debug, error, info, warn};
+use std::str::{Lines, SplitWhitespace};
+use log::{debug, error, info, warn};
 
 // Argument struct
 #[derive(Parser, Debug)]
@@ -35,7 +35,7 @@ enum ComparisonType {
 }
 #[derive(Debug)]
 enum Token {
-    // Language punctuation
+    // Language punctuation and operators
     LeftBrace,
     RightBrace,
     LeftBracket,
@@ -47,17 +47,6 @@ enum Token {
     Period,
     RightArrow,
     Comment,
-
-    // Language keywords
-    IfToken,
-    ElseToken,
-    WhileToken,
-    InToken,
-    FnToken,
-    ReturnToken,
-    LetToken,
-
-    // Operators
     Comparator(ComparisonType),
     Equal,
     Asterisk,
@@ -67,6 +56,15 @@ enum Token {
     QuestionMark,
     Plus,
     Pipe,
+
+    // Language keywords
+    IfToken,
+    ElseToken,
+    WhileToken,
+    InToken,
+    FnToken,
+    ReturnToken,
+    LetToken,
 
     ID(String),
     Literal(String),
@@ -102,7 +100,17 @@ fn main() {
 fn tokenise(txt: String) -> Vec<Token> {
     let lines_txt: Lines = txt.lines();
     let mut token_builder: Vec<Token> = Vec::new();
+    let mut cursor: usize = 0;
+    let mut lookahead: usize = 0;
     for line in lines_txt {
+        while cursor < line.len() {
+            if line[cursor] == " " {
+                cursor += 1;
+            } else {
+                match_string(cursor)
+            }
+        }
+        
         token_builder.push(Token::EOL);
     }
     return token_builder;
