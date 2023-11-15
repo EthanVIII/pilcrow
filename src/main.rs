@@ -102,15 +102,17 @@ fn tokenise(txt: String) -> Vec<Token> {
     let mut token_builder: Vec<Token> = Vec::new();
     let mut cursor: usize = 0;
     let mut lookahead: usize = 0;
-    for line in lines_txt {
+    for line in lines_txt.map( |x| x.chars().collect::<Vec<char>>()) {
         while cursor < line.len() {
-            if line[cursor] == " " {
-                cursor += 1;
+            if line[cursor] == ' ' {
+                println!("Space");
             } else {
-                match_string(cursor)
+                // match_string(cursor)
             }
+            cursor += 1;
+
         }
-        
+
         token_builder.push(Token::EOL);
     }
     return token_builder;
