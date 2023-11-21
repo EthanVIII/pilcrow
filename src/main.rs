@@ -109,10 +109,9 @@ fn tokenise(txt: String) -> Vec<Token> {
             } else {
                 // match_string(cursor)
             }
-            cursor += 1;
-
+            cursor += 1; 
         }
-
+        
         token_builder.push(Token::EOL);
     }
     return token_builder;
