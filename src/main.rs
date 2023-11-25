@@ -100,23 +100,44 @@ fn main() {
 fn tokenise(txt: String) -> Vec<Token> {
     let lines_txt: Lines = txt.lines();
     let mut token_builder: Vec<Token> = Vec::new();
-    let mut cursor: usize = 0;
-    let mut lookahead: usize = 0;
-    for line in lines_txt.map( |x| x.chars().collect::<Vec<char>>()) {
-        while cursor < line.len() {
-            if line[cursor] == ' ' {
-                println!("Space");
-            } else {
-                // match_string(cursor)
-            }
-            cursor += 1; 
-        }
-        
-        token_builder.push(Token::EOL);
+    
+
+    for line in lines_txt{
+        let char_vec: Vec<char> = line.chars().collect();
+        let identifier: (Vec<char>, Vec<char>)= read_identifier(&char_vec);
     }
     return token_builder;
 }
 
+fn read_identifier(txt: &Vec<char>) -> (Vec<char>, Vec<char>) {
+    if txt.len() == 0 {
+        return (Vec::new(), Vec::new());
+    }
+    if is_letter(&txt[0]) {
+        // TODO: Parse Identifier for a-z, A-Z, _
+        return (['L'].to_vec(), txt[1..].to_vec() ); 
+    }
+    if is_number(&txt[0]) {
+        // TODO: Parse full number for 0-9
+        return (['N'].to_vec(), txt[1..].to_vec() ); 
+    }
+    // If string literal, parse until the end of the line.
+    // TODO: Support for escaping strings.
+    if txt[0] == '"' {
+        // TODO: Parse full string.
+
+    }
+    // TODO: Regex for other tokens.
+
+}
+
+fn is_letter(character: &char) -> bool {
+    return true;
+}
+
+fn is_number(character: &char) -> bool {
+    return true;
+}
 
 // Read file and return file text if available.
 fn read_file(filename: &String) -> String {
