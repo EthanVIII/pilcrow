@@ -219,6 +219,7 @@ fn tokenise(txt: String) -> Vec<Token> {
 
 
 // TODO: Refactor read_token_and_eat to output token and remainder of string.
+// May be redundant
 fn read_token_and_eat(txt: &Vec<char>) -> (Option<Vec<char>>, Option<Vec<char>>) {
     if txt.get(0) == None {
         return (Option::None, Option::None);
