@@ -5,6 +5,7 @@ use std::io::Read;
 use std::path::{Display, Path};
 use std::str::{Lines, SplitWhitespace};
 use log::{debug, error, info, warn};
+use regex::Regex;
 
 // Argument struct
 #[derive(Parser, Debug)]
@@ -69,7 +70,47 @@ enum Token {
     ID(String),
     Literal(String),
 
-    EOL,
+    // EOL,
+}
+impl Token {
+    // TODO: Implement Regex for these tokens.
+    fn token_regex(token: Token) -> Regex {
+        return match token {
+        // Language punctuation and operators
+            Token::LeftBrace => {},
+            Token::RightBrace => {},
+            Token::LeftBracket => {},
+            Token::RightBracket => {},
+            Token::LeftParen => {},
+            Token::RightParen => {},
+            Token::Semicolon=> {},
+            Token::Colon=> {},
+            Token::Period=> {},
+            Token::RightArrow=> {},
+            Token::Comment=> {},
+            Token::Comparator(ComparisonType)=> {},
+            Token::Equal=> {},
+            Token::Asterisk=> {},
+            Token::Ampersand=> {},
+            Token::Dash=> {},
+            Token::Slash=> {},
+            Token::QuestionMark=> {},
+            Token::Plus=> {},
+            Token::Pipe=> {},
+
+            // Language keywords
+            Token::IfToken=> {},
+            Token::ElseToken=> {},
+            Token::WhileToken=> {},
+            Token::InToken=> {},
+            Token::FnToken=> {},
+            Token::ReturnToken=> {},
+            Token::LetToken=> {},
+
+            Token::ID(String)=> {},
+            Token::Literal(String)=> {},
+        }
+    }
 }
 
 
@@ -95,48 +136,70 @@ fn main() {
     // Tokenise elements
     let tokens: Vec<Token> = tokenise(file_txt);
     println!("{:?}", tokens);
+    // TODO: Parse elements in AST.
 }
 
 fn tokenise(txt: String) -> Vec<Token> {
     let lines_txt: Lines = txt.lines();
     let mut token_builder: Vec<Token> = Vec::new();
     
-
+    info!("Tokenising lines from source code.");
+    // TODO: Do it all in one shot?
     for line in lines_txt{
         let char_vec: Vec<char> = line.chars().collect();
-        let identifier: (Vec<char>, Vec<char>)= read_identifier(&char_vec);
+        let token_progress: (Option<Vec<char>>, Option<Vec<char>>)= read_token_and_eat(&char_vec);
+        match token_progress.0 {
+            Some(x) =>  
+        match expr {
+                Some(expr) => expr,
+                None => expr,
+            }
+        }
+        token_builder.append(token_progress.0)
     }
+    info!("Successfully tokenised lines from source.");
     return token_builder;
 }
 
-fn read_identifier(txt: &Vec<char>) -> (Vec<char>, Vec<char>) {
-    if txt.len() == 0 {
-        return (Vec::new(), Vec::new());
+// TODO: Refactor read_token_and_eat to output token and remainder of string.
+fn read_token_and_eat(txt: &Vec<char>) -> (Option<Vec<char>>, Option<Vec<char>>) {
+    if txt.get(0) == None {
+        return (Option::None, Option::None);
     }
-    if is_letter(&txt[0]) {
+    // Special cases that should be looked ahead.
+    // Full alphabet chars, not just ascii.
+    // TODO: Rewrite with regex.
+    if txt[0].is_alphabetic() || txt[0] == '_' {
         // TODO: Parse Identifier for a-z, A-Z, _
-        return (['L'].to_vec(), txt[1..].to_vec() ); 
+        let mut cursor: usize = 1;
+        while txt.get(cursor) != Option::None {
+            if txt[cursor].is_alphabetic() || txt[cursor] == '_' {
+                cursor += 1;
+            }
+            else {
+                return (Option::Some(txt[..cursor].to_vec()),
+                    Option::Some(txt[cursor..].to_vec()));
+            }
+        }
+        return (Option::Some(txt.to_vec()), Option::None); 
     }
-    if is_number(&txt[0]) {
+    if txt[0].is_numeric() {
         // TODO: Parse full number for 0-9
-        return (['N'].to_vec(), txt[1..].to_vec() ); 
+        return (Option::None, Option::Some(txt[1..].to_vec())); 
     }
     // If string literal, parse until the end of the line.
-    // TODO: Support for escaping strings.
+    // TODO: Support for escaping strings using regex.
     if txt[0] == '"' {
         // TODO: Parse full string.
 
     }
-    // TODO: Regex for other tokens.
-
-}
-
-fn is_letter(character: &char) -> bool {
-    return true;
-}
-
-fn is_number(character: &char) -> bool {
-    return true;
+    // Eat whitespace
+    // TODO: Preserve whitespace eating behaviour.
+    if txt[0].is_whitespace() {
+        return (Option::None, Option::Some(txt[1..].to_vec()));
+    }
+    // TODO: Tokenising using regex.
+    return (Option::Some(vec![txt[0]]), Option::Some(txt[1..].to_vec()));
 }
 
 // Read file and return file text if available.

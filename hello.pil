@@ -1,5 +1,5 @@
 
 // Hello in Pilcrow.
-fn main() -> None {
+fn main(): None {
 	println("Hello World");
 }
