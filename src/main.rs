@@ -25,7 +25,7 @@ struct Args {
     compile: bool,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum Token {
     // Language punctuation and operators
     LeftBrace,
@@ -38,7 +38,7 @@ enum Token {
     Colon,
     Period,
     RightArrow,
-    Comment,
+    Comment(String),
     LeqComparator,
     GeqComparator,
     LeComparator,
@@ -71,46 +71,48 @@ enum Token {
     EOL,
 }
 impl Token {
-    fn to_regex_pattern(&self) -> String {
-        return match &self {
-            Token::LeftBrace => { r"^\{" }
-            Token::RightBrace => { r"^\}" }
-            Token::LeftBracket => { r"^\[" }
-            Token::RightBracket => { r"^\]" }
-            Token::LeftParen => { r"^\(" }
-            Token::RightParen => { r"^\)" }
-            Token::Semicolon => { r"^;" }
-            Token::Colon => { r"^:" }
-            Token::Period => { r"^\." }
-            Token::RightArrow => { r"^->" }
-            Token::Comment => { r"^//" }
-            Token::LeqComparator => { r"^<=" }
-            Token::GeqComparator => { r"^>=" }
-            Token::LeComparator => { r"^<" }
-            Token::GeComparator => { r"^>" }
-            Token::EqComparator => { r"^==" }
-            Token::NeqComparator => { r"^!=" }
-            Token::AndOperation => { r"^&&" }
-            Token::OrOperation => { r"^\|\|" }
-            Token::Equal => { r"^=" }
-            Token::Asterisk => { r"^\*" }
-            Token::Ampersand => { r"^&" }
-            Token::Dash => { r"^-" }
-            Token::Slash => { r"^\/" }
-            Token::QuestionMark => { r"^\?" }
-            Token::Plus => { r"^\+" }
-            Token::Pipe => { r"^\|" }
-            Token::IfToken => { r"^if" }
-            Token::ElseToken => { r"^else" }
-            Token::WhileToken => { r"^while" }
-            Token::InToken => { r"^in" }
-            Token::FnToken => { r"^fn" }
-            Token::ReturnToken => { r"return" }
-            Token::LetToken => { r"let" }
-            Token::ID(_) => { r"^[a-zA-Z_]+" }
-            Token::Literal(_) => { "^[0-9]+|^\\\"" }
-            Token::EOL => {r"^\r?\n"}
-        }.to_string()
+    fn to_regex_and_literal(&self) -> (String,String) {
+        let regex_literal: (&str, &str) = match &self {
+            Token::LeftBrace => { (r"^\{", r"{") }
+            Token::RightBrace => { (r"^\}", r"}") }
+            Token::LeftBracket => { (r"^\[", r"[") }
+            Token::RightBracket => { (r"^\]", r"]") }
+            Token::LeftParen => { (r"^\(", r"(") }
+            Token::RightParen => { (r"^\)", r")") }
+            Token::Semicolon => { (r"^;", r";") }
+            Token::Colon => { (r"^:", r":") }
+            Token::Period => { (r"^\.", r".") }
+            Token::RightArrow => { (r"^->", r"->") }
+            Token::Comment(_) => { (r"^//", r"//") }
+            Token::LeqComparator => { (r"^<=", r"<=") }
+            Token::GeqComparator => { (r"^>=", r">=") }
+            Token::LeComparator => { (r"^<", r"<") }
+            Token::GeComparator => { (r"^>", r">") }
+            Token::EqComparator => { (r"^==", r"==") }
+            Token::NeqComparator => { (r"^!=", r"!=") }
+            Token::AndOperation => { (r"^&&", r"&&") }
+            Token::OrOperation => { (r"^\|\|", r"||") }
+            Token::Equal => { (r"^=", r"=") }
+            Token::Asterisk => { (r"^\*", r"*") }
+            Token::Ampersand => { (r"^&", r"&") }
+            Token::Dash => { (r"^-", r"-") }
+            Token::Slash => { (r"^\/", r"/") }
+            Token::QuestionMark => { (r"^\?", r"?") }
+            Token::Plus => { (r"^\+", r"+") }
+            Token::Pipe => { (r"^\|", r"|") }
+            // Keywords can optionally be followed by a non alphanumeric character.
+            Token::IfToken => { (r"^if[^a-zA-Z0-9]?", r"if") }
+            Token::ElseToken => { (r"^else[^a-zA-Z0-9]?", r"else") }
+            Token::WhileToken => { (r"^while[^a-zA-Z0-9]?", r"while") }
+            Token::InToken => { (r"^in[^a-zA-Z0-9]?", r"in") }
+            Token::FnToken => { (r"^fn[^a-zA-Z0-9]?", r"fn") }
+            Token::ReturnToken => { (r"return[^a-zA-Z0-9]?", r"return") }
+            Token::LetToken => { (r"let[^a-zA-Z0-9]?", r"let") }
+            Token::ID(_) => { (r"^[a-zA-Z0-9_]+", "") }
+            Token::Literal(_) => { ("^[0-9]+|^\\\"", "") }
+            Token::EOL => { (r"^\r?\n", " ") }
+        };
+        return (regex_literal.0.to_string(), regex_literal.1.to_string());
     }
 }
 
@@ -126,7 +128,7 @@ fn all_tokens() -> Vec<Token> {
         Token::Colon,
         Token::Period,
         Token::RightArrow,
-        Token::Comment,
+        Token::Comment("".to_string()),
         Token::LeqComparator,
         Token::GeqComparator,
         Token::LeComparator,
@@ -183,11 +185,13 @@ fn main() {
 
 fn tokenise(txt: String) -> Vec<Token> {
     info!("Tokenising from source code.");
+    let mut eaten_txt: String = txt; // Text to be consumed.
+    let mut tokens: Vec<Token> = Vec::new(); // Final return vec.
 
-    let token_vals: Vec<Token> = all_tokens();
+    let token_vals: Vec<Token> = all_tokens(); // Extract all tokens.
     let token_pats: Vec<String> = token_vals.iter()
-        .map(|x| x.to_regex_pattern())
-        .collect();
+        .map(|x| x.to_regex_and_literal().0)
+        .collect(); // Get matching token string patterns.
     let set: RegexSet = match RegexSet::new(token_pats) {
         Ok(result) => {result}
         Err(error) => {
@@ -195,75 +199,61 @@ fn tokenise(txt: String) -> Vec<Token> {
             panic!("Panicked due to previous error.");
         }
     };
-
-    let matches: Vec<&Token> = set
-        .matches(&txt)
-        .into_iter()
-        .map(|index| &token_vals[index])
-        .collect();
-
-    println!("{:?}",matches);
-
-    //let token_progress: (Option<Vec<char>>, Option<Vec<char>>)= read_token_and_eat(&char_vec);
+    // Continue loop while consuming text into tokens repeatedly.
+    while eaten_txt.len() > 0 {
+        // Eat whitespace :) It is a token separator only.
+        if eaten_txt.chars().nth(0).unwrap() == ' ' {
+            eaten_txt.remove(0);
+            continue;
+        }
+        // Match with Regex and pull out the longest matched token.
+        // Keywords are always prioritised over string literals and ids.
+        let longest_matched_token: &Token = match set
+            .matches(&eaten_txt)
+            .into_iter()
+            .map(|index| &token_vals[index])
+            .max_by_key(|x| x.to_regex_and_literal().1.len()) {
+            None => {
+                error!(
+                    "Token not found for character(s) beginning with {}",
+                    eaten_txt.chars().nth(0).unwrap()
+                );
+                panic!("Panicking due to previous error.");
+            }
+            Some(x) => {x}
+        };
+        // Prepare the token to be pushed onto return list (tokens).
+        // This includes finding the full comment, literal, or ID.
+        let token_to_push: (Token, usize) = match longest_matched_token {
+            // TODO: Read rest of line as comment.
+            Token::Comment(_) => {
+                (Token::Comment("This is a comment".to_string()), 1)
+            }
+            // TODO: Read until other " as Literal. For now.
+            // TODO: Implement Escape characters.
+            Token::Literal(_) => {
+                (Token::Literal("literal".to_string()), 1)
+            }
+            // TODO: Read until non alphanumeric character.
+            Token::ID(_) => {
+                (Token::ID("id".to_string()), 1)
+            }
+            x => (x.clone(), x.to_regex_and_literal().1.len())
+        };
+        // Consume the aforementioned token completely.
+        eaten_txt = eaten_txt
+            .chars()
+            .skip(token_to_push.1)
+            .collect();
+        // Push the token onto return list.
+        tokens.push(token_to_push.0);
+        println!("{:?}",eaten_txt);
+        println!("{:?}",longest_matched_token);
+    }
 
     info!("Successfully tokenised lines from source.");
-    let regexes: Vec<_> = set
-        .patterns()
-        .iter()
-        .map(|pat| Regex::new(pat).unwrap())
-        .collect();
-    return vec![];
-}
 
-
-
-
-// TODO: Refactor read_token_and_eat to output token and remainder of string.
-// May be redundant
-fn read_token_and_eat(txt: &Vec<char>) -> (Option<Vec<char>>, Option<Vec<char>>) {
-    if txt.get(0) == None {
-        return (Option::None, Option::None);
-    }
-
-
-
-
-
-    ////
-    // Special cases that should be looked ahead.
-    // Full alphabet chars, not just ascii.
-    // TODO: Rewrite with regex.
-    if txt[0].is_alphabetic() || txt[0] == '_' {
-        // TODO: Parse Identifier for a-z, A-Z, _
-        let mut cursor: usize = 1;
-        while txt.get(cursor) != Option::None {
-            if txt[cursor].is_alphabetic() || txt[cursor] == '_' {
-                cursor += 1;
-            }
-            else {
-                return (Option::Some(txt[..cursor].to_vec()),
-                    Option::Some(txt[cursor..].to_vec()));
-            }
-        }
-        return (Option::Some(txt.to_vec()), Option::None); 
-    }
-    if txt[0].is_numeric() {
-        // TODO: Parse full number for 0-9
-        return (Option::None, Option::Some(txt[1..].to_vec())); 
-    }
-    // If string literal, parse until the end of the line.
-    // TODO: Support for escaping strings using regex.
-    if txt[0] == '"' {
-        // TODO: Parse full string.
-
-    }
-    // Eat whitespace
-    // TODO: Preserve whitespace eating behaviour.
-    if txt[0].is_whitespace() {
-        return (Option::None, Option::Some(txt[1..].to_vec()));
-    }
-    // TODO: Tokenising using regex.
-    return (Option::Some(vec![txt[0]]), Option::Some(txt[1..].to_vec()));
+    return tokens;
 }
 
 // Read file and return file text if available.
