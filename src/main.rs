@@ -83,7 +83,7 @@ impl Token {
             Token::Colon => { (r"^:", r":") }
             Token::Period => { (r"^\.", r".") }
             Token::RightArrow => { (r"^->", r"->") }
-            Token::Comment(_) => { (r"^//", r"//") }
+            Token::Comment(_) => { (r"^\/\/.*\r?\n", r"//") }
             Token::LeqComparator => { (r"^<=", r"<=") }
             Token::GeqComparator => { (r"^>=", r">=") }
             Token::LeComparator => { (r"^<", r"<") }
@@ -108,8 +108,8 @@ impl Token {
             Token::FnToken => { (r"^fn[^a-zA-Z0-9]?", r"fn") }
             Token::ReturnToken => { (r"return[^a-zA-Z0-9]?", r"return") }
             Token::LetToken => { (r"let[^a-zA-Z0-9]?", r"let") }
-            Token::ID(_) => { (r"^[a-zA-Z0-9_]+", "") }
-            Token::Literal(_) => { ("^[0-9]+|^\\\"", "") }
+            Token::ID(_) => { (r"[a-zA-Z0-9_]+(?:\(\))?", "") }
+            Token::Literal(_) => { ("^\"(?:[^\\\\\"]|\\\\.)*\"", "") }
             Token::EOL => { (r"^\r?\n", " ") }
         };
         return (regex_literal.0.to_string(), regex_literal.1.to_string());
@@ -202,10 +202,12 @@ fn tokenise(txt: String) -> Vec<Token> {
     // Continue loop while consuming text into tokens repeatedly.
     while eaten_txt.len() > 0 {
         // Eat whitespace :) It is a token separator only.
-        if eaten_txt.chars().nth(0).unwrap() == ' ' {
-            eaten_txt.remove(0);
-            continue;
+        if eaten_txt.chars().nth(0).unwrap() == ' ' ||
+            eaten_txt.chars().nth(0).unwrap() == '\t' {
+                eaten_txt.remove(0);
+                continue;
         }
+
         // Match with Regex and pull out the longest matched token.
         // Keywords are always prioritised over string literals and ids.
         let longest_matched_token: &Token = match set
@@ -222,37 +224,38 @@ fn tokenise(txt: String) -> Vec<Token> {
             }
             Some(x) => {x}
         };
+
+        // Backtrack to find the matching pattern in the string. This is important
+        // for variable length tokens to be constructed later.
+        let matched_regex: Regex = Regex::new(&*longest_matched_token
+            .to_regex_and_literal().0)
+            .unwrap();
+        let regex_match: &str = matched_regex
+            .find(&*eaten_txt)
+            .unwrap()
+            .as_str();
+        
         // Prepare the token to be pushed onto return list (tokens).
         // This includes finding the full comment, literal, or ID.
         let token_to_push: (Token, usize) = match longest_matched_token {
-            // TODO: Read rest of line as comment.
-            Token::Comment(_) => {
-                (Token::Comment("This is a comment".to_string()), 1)
-            }
-            // TODO: Read until other " as Literal. For now.
-            // TODO: Implement Escape characters.
-            Token::Literal(_) => {
-                (Token::Literal("literal".to_string()), 1)
-            }
-            // TODO: Read until non alphanumeric character.
-            Token::ID(_) => {
-                (Token::ID("id".to_string()), 1)
-            }
+            Token::Comment(_) => { (Token::Comment(regex_match.to_string()), regex_match.len()) }
+            Token::Literal(_) => { (Token::Literal(regex_match.to_string()), regex_match.len()) }
+            Token::ID(_) => { (Token::ID(regex_match.to_string()), regex_match.len()) }
             x => (x.clone(), x.to_regex_and_literal().1.len())
         };
+
         // Consume the aforementioned token completely.
         eaten_txt = eaten_txt
             .chars()
             .skip(token_to_push.1)
             .collect();
+
         // Push the token onto return list.
+        debug!("Pushing token: {:?}",token_to_push.0);
+        debug!("Remaining Text: {:?}",eaten_txt);
         tokens.push(token_to_push.0);
-        println!("{:?}",eaten_txt);
-        println!("{:?}",longest_matched_token);
     }
-
     info!("Successfully tokenised lines from source.");
-
     return tokens;
 }
 
