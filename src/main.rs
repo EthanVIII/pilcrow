@@ -25,7 +25,7 @@ struct Args {
     compile: bool,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 enum Token {
     // Language punctuation and operators
     LeftBrace,
@@ -69,6 +69,7 @@ enum Token {
     Literal(String),
 
     EOL,
+    Space,
 }
 impl Token {
     fn to_regex_and_literal(&self) -> (String,String) {
@@ -108,9 +109,10 @@ impl Token {
             Token::FnToken => { (r"^fn[^a-zA-Z0-9]?", r"fn") }
             Token::ReturnToken => { (r"return[^a-zA-Z0-9]?", r"return") }
             Token::LetToken => { (r"let[^a-zA-Z0-9]?", r"let") }
-            Token::ID(_) => { (r"[a-zA-Z0-9_]+(?:\(\))?", "") }
+            Token::ID(_) => { (r"[a-zA-Z0-9_]+", "") }
             Token::Literal(_) => { ("^\"(?:[^\\\\\"]|\\\\.)*\"", "") }
             Token::EOL => { (r"^\r?\n", " ") }
+            Token::Space => { (" ", " ") }
         };
         return (regex_literal.0.to_string(), regex_literal.1.to_string());
     }
@@ -186,7 +188,7 @@ fn main() {
 fn tokenise(txt: String) -> Vec<Token> {
     info!("Tokenising from source code.");
     let mut eaten_txt: String = txt; // Text to be consumed.
-    let mut tokens: Vec<Token> = Vec::new(); // Final return vec.
+    let mut tokens: Vec<Token> = vec![Token::EOL]; // Final return vec.
 
     let token_vals: Vec<Token> = all_tokens(); // Extract all tokens.
     let token_pats: Vec<String> = token_vals.iter()
@@ -201,11 +203,14 @@ fn tokenise(txt: String) -> Vec<Token> {
     };
     // Continue loop while consuming text into tokens repeatedly.
     while eaten_txt.len() > 0 {
-        // Eat whitespace :) It is a token separator only.
-        if eaten_txt.chars().nth(0).unwrap() == ' ' ||
-            eaten_txt.chars().nth(0).unwrap() == '\t' {
-                eaten_txt.remove(0);
-                continue;
+        // Eat multiple whitespace :)
+        let first_char: char = eaten_txt.chars().nth(0).unwrap();
+        if first_char == ' ' || first_char == '\t' {
+            if tokens[tokens.len()-1] != Token::Space {
+                tokens.push(Token::Space);
+            }
+            eaten_txt.remove(0);
+            continue;
         }
 
         // Match with Regex and pull out the longest matched token.
