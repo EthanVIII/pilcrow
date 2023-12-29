@@ -158,6 +158,7 @@ fn all_tokens() -> Vec<Token> {
     ]
 }
 
+#[derive(Debug, Clone, Eq, PartialEq)]
 struct AstNode {
     val: Token,
     children: Vec<AstNode>,
@@ -170,10 +171,7 @@ impl AstNode {
         }
     }
     fn new(val: Token, children: Vec<AstNode>) -> AstNode {
-        return AstNode {
-            val,
-            children,
-        }
+        return AstNode { val, children }
     }
 }
 
@@ -198,20 +196,87 @@ fn main() {
 
     // Tokenise elements
     let tokens: Vec<Token> = tokenise(file_txt);
-    println!("{:?}", tokens);
+
+    // TODO: Implement better filtering for token spaces. 
+    // Sorry, I'm just blanking rn and have no internet.
+    let mut tokens_no_space: Vec<Token> = Vec::new();
+    for token in tokens {
+        match &token {
+            Token::Space | Token::EOL | Token::Comment(_) => {}
+            _ => {tokens_no_space.push(token)}
+        }
+    }
+
+    println!("{:?}", tokens_no_space);
 
     // Parse elements
-    let ast: AstNode = parse_to_ast(tokens);
+    let ast: AstNode = parse_to_ast(tokens_no_space);
 
 }
 
 fn parse_to_ast(tokens: Vec<Token>) -> AstNode {
     info!("Parsing tokens to AST.");
     let mut root: AstNode = AstNode::new_empty(Token::EOL);
+    let mut token_cursor: usize = 0;
+    while token_cursor < tokens.len() {
+        let node: AstNode = match tokens[token_cursor] {
+            // Structure of let expression declaration is as follows.
+            // var_id = variable ID 
+            // [] = Optional
+            // literal_or_ref = Literal or variable ID
+            // type = type of variable
+            // let var_id [:type] = literal_or_ref
+            //
+            // LetToken
+            //  |- ID
+            //  |- Expression
+            //  TODO: Implement the rest of let expression parsing.
+            Token::LetToken => {
+                // Lookahead to next token.
+                let id_token = token_expected_lookahead(&tokens, &token_cursor, 1);
+                AstNode::new(Token::LetToken,  vec![AstNode::new_empty(id_token.clone())])
+            }
+            // TODO: Implement all tokens.
+            _ => {
+                unimplemented!("Parsing {:?} is unimplemented.", tokens[token_cursor]);
+            }
+        };
+        root.children.push(node);
+        token_cursor += 1;
+        println!("{:?}",root);
+    }
 
     info!("Successfully parsed tokens to AST.");
     return root;
 }
+
+fn token_expected_lookahead<'a>(
+    tokens: &'a Vec<Token>,
+    position: &'a usize,
+    lookahead: usize) -> &'a Token {
+    return match token_lookahead(tokens, position, lookahead) {
+        Option::Some(return_token) => return_token,
+        Option::None => {
+            error!(
+                // TODO: Implement std::fmt::Display for 'Token'.
+                "Invalid syntax, additional token not present at some point after {:?}",
+                tokens[*position]);
+            panic!("Panicked due to previous error");
+        }
+    }
+}
+
+
+fn token_lookahead<'a>(
+    tokens: &'a Vec<Token>,
+    position: &'a usize,
+    lookahead: usize) -> Option<&'a Token> {
+    if lookahead + position >= tokens.len() {
+        return Option::None;
+    }
+    return Option::Some(&tokens[position + lookahead]);
+}
+
 
 fn tokenise(txt: String) -> Vec<Token> {
     info!("Tokenising from source code.");
@@ -226,7 +291,7 @@ fn tokenise(txt: String) -> Vec<Token> {
         Ok(result) => {result}
         Err(error) => {
             error!("Regex parsing error. {}", error);
-            panic!("Panicked due to previous error.");
+            panic!("Panicked due to previous error");
         }
     };
     // Continue loop while consuming text into tokens repeatedly.
