@@ -1,0 +1,7 @@
+
+// Variables in pilcrow are declared with the following syntax.
+ let x = 100;
+// let y: int  = 30;
+// let z: string = "Hello World";
+// let x_copy : int = x;
+// let mut y_copy: int = y;

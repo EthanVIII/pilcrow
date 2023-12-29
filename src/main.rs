@@ -4,10 +4,8 @@ use clap::{arg, Parser};
 use std::fs::File;
 use std::io::Read;
 use std::path::{Display, Path};
-use std::str::{Lines, SplitWhitespace};
-use clap::builder::Str;
 use log::{debug, error, info, warn};
-use regex::{Error, Regex, RegexSet};
+use regex::{Regex, RegexSet};
 
 // Argument struct
 #[derive(Parser, Debug)]
@@ -107,12 +105,12 @@ impl Token {
             Token::WhileToken => { (r"^while[^a-zA-Z0-9]?", r"while") }
             Token::InToken => { (r"^in[^a-zA-Z0-9]?", r"in") }
             Token::FnToken => { (r"^fn[^a-zA-Z0-9]?", r"fn") }
-            Token::ReturnToken => { (r"return[^a-zA-Z0-9]?", r"return") }
-            Token::LetToken => { (r"let[^a-zA-Z0-9]?", r"let") }
-            Token::ID(_) => { (r"[a-zA-Z0-9_]+", "") }
+            Token::ReturnToken => { (r"^return[^a-zA-Z0-9]?", r"return") }
+            Token::LetToken => { (r"^let[^a-zA-Z0-9]?", r"let") }
+            Token::ID(_) => { (r"^[a-zA-Z0-9_]+", "") }
             Token::Literal(_) => { ("^\"(?:[^\\\\\"]|\\\\.)*\"", "") }
             Token::EOL => { (r"^\r?\n", " ") }
-            Token::Space => { (" ", " ") }
+            Token::Space => { ("^ ", " ") }
         };
         return (regex_literal.0.to_string(), regex_literal.1.to_string());
     }
@@ -160,6 +158,25 @@ fn all_tokens() -> Vec<Token> {
     ]
 }
 
+struct AstNode {
+    val: Token,
+    children: Vec<AstNode>,
+}
+impl AstNode {
+    fn new_empty(val: Token) -> AstNode {
+        return AstNode {
+            val,
+            children: Vec::new(),
+        }
+    }
+    fn new(val: Token, children: Vec<AstNode>) -> AstNode {
+        return AstNode {
+            val,
+            children,
+        }
+    }
+}
+
 fn main() {
     let args = Args::parse();
 
@@ -182,7 +199,18 @@ fn main() {
     // Tokenise elements
     let tokens: Vec<Token> = tokenise(file_txt);
     println!("{:?}", tokens);
-    // TODO: Parse elements in AST.
+
+    // Parse elements
+    let ast: AstNode = parse_to_ast(tokens);
+
+}
+
+fn parse_to_ast(tokens: Vec<Token>) -> AstNode {
+    info!("Parsing tokens to AST.");
+    let mut root: AstNode = AstNode::new_empty(Token::EOL);
+
+    info!("Successfully parsed tokens to AST.");
+    return root;
 }
 
 fn tokenise(txt: String) -> Vec<Token> {
